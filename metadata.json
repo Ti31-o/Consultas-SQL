@@ -1,0 +1,8 @@
+{
+  "name": "SQL Studio & Learning Lab",
+  "description": "Ambiente completo de desenvolvimento, aprendizado e execução SQL com banco de dados relacional em tempo real, editor de consultas, diagramas ER visuais, desafios interativos e visualização de dados.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
