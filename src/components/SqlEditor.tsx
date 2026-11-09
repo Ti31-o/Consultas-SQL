@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Play, Sparkles, Wand2, Trash2, History, Plus, X, Copy, Check } from 'lucide-react';
+import { Play, Sparkles, Wand2, Trash2, History, Plus, X, Copy, Check, FileCode2 } from 'lucide-react';
 
 export interface QueryTab {
   id: string;
@@ -19,6 +19,7 @@ interface SqlEditorProps {
   onExplainQuery: () => void;
   history: Array<{ query: string; timestamp: Date; executionTimeMs: number; error?: string }>;
   onRestoreHistory: (query: string) => void;
+  onOpenExampleQueries?: () => void;
 }
 
 const SQL_KEYWORDS = [
@@ -40,6 +41,7 @@ export const SqlEditor: React.FC<SqlEditorProps> = ({
   onExplainQuery,
   history,
   onRestoreHistory,
+  onOpenExampleQueries,
 }) => {
   const currentTab = tabs.find(t => t.id === activeTabId) || tabs[0];
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -158,6 +160,17 @@ export const SqlEditor: React.FC<SqlEditorProps> = ({
 
         {/* Query Controls */}
         <div className="flex items-center gap-1.5 pb-1">
+          {onOpenExampleQueries && (
+            <button
+              onClick={onOpenExampleQueries}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs text-cyan-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-cyan-500/30 rounded-md transition cursor-pointer"
+              title="Abrir biblioteca de consultas SQL de exemplo"
+            >
+              <FileCode2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Exemplos</span>
+            </button>
+          )}
+
           <button
             onClick={formatSql}
             className="flex items-center gap-1 px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 rounded-md transition"

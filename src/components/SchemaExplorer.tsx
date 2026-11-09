@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Key, Link2, ChevronRight, ChevronDown, Search, Plus, Eye, Database, Code2 } from 'lucide-react';
+import { Table, Key, Link2, ChevronRight, ChevronDown, Search, Plus, Eye, Database, Code2, X } from 'lucide-react';
 import { TableSchema } from '../lib/sqliteEngine';
 
 interface SchemaExplorerProps {
@@ -8,6 +8,8 @@ interface SchemaExplorerProps {
   onInsertSampleRow: (tableName: string) => void;
   onViewDdl: (tableName: string, ddl: string) => void;
   isLoading?: boolean;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
@@ -16,6 +18,8 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
   onInsertSampleRow,
   onViewDdl,
   isLoading,
+  isMobileOpen,
+  onCloseMobile,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedTables, setExpandedTables] = useState<Record<string, boolean>>(() => {
@@ -39,8 +43,8 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
     t.columns.some(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  return (
-    <div className="w-64 md:w-72 bg-slate-900/90 border-r border-slate-800 flex flex-col h-full text-slate-200 select-none">
+  const content = (
+    <div className="w-72 md:w-64 lg:w-72 bg-slate-900 border-r border-slate-800 flex flex-col h-full text-slate-200 select-none shadow-xl md:shadow-none">
       {/* Search Bar */}
       <div className="p-3 border-b border-slate-800/80">
         <div className="flex items-center justify-between mb-2">
@@ -48,6 +52,14 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
             <Database className="w-3.5 h-3.5 text-indigo-400" />
             <span>Tabelas & Esquema ({tables.length})</span>
           </div>
+          {onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="md:hidden p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <div className="relative">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -106,9 +118,10 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
                       onClick={e => {
                         e.stopPropagation();
                         onSelectTableQuery(table.name);
+                        if (onCloseMobile) onCloseMobile();
                       }}
                       title={`SELECT * FROM ${table.name} LIMIT 50`}
-                      className="p-1 rounded hover:bg-indigo-600/30 text-slate-400 hover:text-indigo-300 transition"
+                      className="p-1 rounded hover:bg-indigo-600/30 text-slate-400 hover:text-indigo-300 transition cursor-pointer"
                     >
                       <Eye className="w-3 h-3" />
                     </button>
@@ -121,7 +134,7 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
                           onViewDdl(table.name, table.sql || '');
                         }}
                         title="Ver DDL (CREATE TABLE)"
-                        className="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition"
+                        className="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition cursor-pointer"
                       >
                         <Code2 className="w-3 h-3" />
                       </button>
@@ -175,15 +188,21 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
 
                     <div className="pt-1 mt-1 border-t border-slate-800/40 flex items-center justify-between">
                       <button
-                        onClick={() => onInsertSampleRow(table.name)}
-                        className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 py-0.5 hover:underline"
+                        onClick={() => {
+                          onInsertSampleRow(table.name);
+                          if (onCloseMobile) onCloseMobile();
+                        }}
+                        className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 py-0.5 hover:underline cursor-pointer"
                       >
                         <Plus className="w-3 h-3" />
                         Inserir Linha
                       </button>
                       <button
-                        onClick={() => onSelectTableQuery(table.name)}
-                        className="text-[10px] text-slate-400 hover:text-slate-200 flex items-center gap-1 py-0.5"
+                        onClick={() => {
+                          onSelectTableQuery(table.name);
+                          if (onCloseMobile) onCloseMobile();
+                        }}
+                        className="text-[10px] text-slate-400 hover:text-slate-200 flex items-center gap-1 py-0.5 cursor-pointer"
                       >
                         Abrir Consulta
                       </button>
@@ -196,5 +215,27 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
         )}
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop view */}
+      <div className="hidden md:flex h-full">
+        {content}
+      </div>
+
+      {/* Mobile Drawer view */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-40 md:hidden flex">
+          <div
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
+            onClick={onCloseMobile}
+          />
+          <div className="relative z-50 h-full animate-in slide-in-from-left duration-200">
+            {content}
+          </div>
+        </div>
+      )}
+    </>
   );
 };

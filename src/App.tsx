@@ -10,7 +10,9 @@ import { SqlEditor, QueryTab } from './components/SqlEditor';
 import { ResultsTable } from './components/ResultsTable';
 import { VisualErDiagram } from './components/VisualErDiagram';
 import { ChallengesLab } from './components/ChallengesLab';
-import { DataVisualizer } from './components/DataVisualizer';
+import { KpiIndicators } from './components/KpiIndicators';
+import { SalesAnalytics } from './components/SalesAnalytics';
+import { ExampleQueriesModal } from './components/ExampleQueriesModal';
 import { AiAssistantModal } from './components/AiAssistantModal';
 import { DdlModal } from './components/DdlModal';
 import { sqlEngine, TableSchema, QueryResult } from './lib/sqliteEngine';
@@ -24,6 +26,7 @@ export default function App() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [tables, setTables] = useState<TableSchema[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isMobileSchemaOpen, setIsMobileSchemaOpen] = useState(false);
 
   // Query Tabs
   const [queryTabs, setQueryTabs] = useState<QueryTab[]>([
@@ -54,8 +57,9 @@ export default function App() {
     }
   });
 
-  // AI Modal & DDL Modal
+  // Modals state
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [isExampleQueriesOpen, setIsExampleQueriesOpen] = useState(false);
   const [ddlModal, setDdlModal] = useState<{ tableName: string | null; ddl: string }>({
     tableName: null,
     ddl: '',
@@ -193,6 +197,17 @@ export default function App() {
     setActiveTab('editor');
   };
 
+  // Load query from example library or analytics
+  const handleLoadQueryToEditor = (sql: string, executeImmediately: boolean = false) => {
+    handleUpdateQuery(activeTabId, sql);
+    setActiveTab('editor');
+    if (executeImmediately) {
+      setTimeout(() => {
+        handleRunQuery(sql);
+      }, 50);
+    }
+  };
+
   // Toggle challenge completed
   const handleToggleChallenge = (id: string) => {
     setCompletedChallenges(prev => {
@@ -204,12 +219,6 @@ export default function App() {
       }
       return next;
     });
-  };
-
-  // Open Challenge query in main editor
-  const handleOpenInMainEditor = (sql: string) => {
-    handleUpdateQuery(activeTabId, sql);
-    setActiveTab('editor');
   };
 
   // Export SQL dump (.sql)
@@ -237,45 +246,6 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  // Sample analytics query
-  const handleRunSampleAnalytics = () => {
-    let sql = '';
-    if (currentDb.id === 'ecommerce') {
-      sql = `SELECT 
-  c.nome AS categoria,
-  COUNT(p.id) AS total_produtos,
-  ROUND(AVG(p.preco), 2) AS preco_medio,
-  SUM(p.estoque) AS estoque_total
-FROM categorias c
-JOIN produtos p ON c.id = p.categoria_id
-GROUP BY c.id, c.nome
-ORDER BY estoque_total DESC;`;
-    } else if (currentDb.id === 'hr_corp') {
-      sql = `SELECT 
-  d.nome AS departamento,
-  COUNT(f.id) AS colaboradores,
-  ROUND(AVG(f.salario), 2) AS media_salarial,
-  ROUND(SUM(f.salario), 2) AS total_folha
-FROM departamentos d
-JOIN funcionarios f ON d.id = f.departamento_id
-GROUP BY d.id, d.nome
-ORDER BY media_salarial DESC;`;
-    } else {
-      sql = `SELECT 
-  g.nome AS genero,
-  COUNT(f.id) AS total_filmes,
-  ROUND(AVG(f.nota_imdb), 1) AS media_imdb,
-  ROUND(SUM(f.bilheteria_milhoes), 1) AS faturamento_milhoes
-FROM generos g
-JOIN filmes f ON g.id = f.genero_id
-GROUP BY g.id, g.nome
-ORDER BY faturamento_milhoes DESC;`;
-    }
-    handleUpdateQuery(activeTabId, sql);
-    handleRunQuery(sql);
-    setActiveTab('analytics');
-  };
-
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 p-4">
@@ -295,7 +265,7 @@ ORDER BY faturamento_milhoes DESC;`;
 
   return (
     <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
-      {/* Top Navigation */}
+      {/* Top Navigation Bar */}
       <Header
         currentDb={currentDb}
         onSelectDb={loadDatabase}
@@ -310,21 +280,25 @@ ORDER BY faturamento_milhoes DESC;`;
         onRunCurrentQuery={() => handleRunQuery()}
         completedChallengesCount={completedChallenges.length}
         totalChallengesCount={CHALLENGES.length}
+        onOpenExampleQueries={() => setIsExampleQueriesOpen(true)}
+        onToggleMobileSchema={() => setIsMobileSchemaOpen(!isMobileSchemaOpen)}
       />
 
       {/* Main View Area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Schema Explorer Sidebar (visible on Editor and Diagram) */}
+        {/* Schema Explorer Sidebar (desktop fixed, mobile drawer) */}
         {(activeTab === 'editor' || activeTab === 'diagram') && (
           <SchemaExplorer
             tables={tables}
             onSelectTableQuery={handleSelectTableQuery}
             onInsertSampleRow={handleInsertSampleRow}
             onViewDdl={(name, ddl) => setDdlModal({ tableName: name, ddl })}
+            isMobileOpen={isMobileSchemaOpen}
+            onCloseMobile={() => setIsMobileSchemaOpen(false)}
           />
         )}
 
-        {/* Tab 1: SQL Editor + Results Table */}
+        {/* Tab 1: SQL Editor + Enhanced Results Table */}
         {activeTab === 'editor' && (
           <div className="flex-1 flex flex-col h-full overflow-hidden">
             <div className="h-[48%] min-h-[220px]">
@@ -340,19 +314,34 @@ ORDER BY faturamento_milhoes DESC;`;
                 onExplainQuery={() => setIsAiOpen(true)}
                 history={history}
                 onRestoreHistory={q => handleUpdateQuery(activeTabId, q)}
+                onOpenExampleQueries={() => setIsExampleQueriesOpen(true)}
               />
             </div>
 
             <div className="flex-1 overflow-hidden">
               <ResultsTable
                 result={queryResult}
-                onOpenAnalytics={() => setActiveTab('analytics')}
+                onOpenAnalytics={() => setActiveTab('sales_analytics')}
               />
             </div>
           </div>
         )}
 
-        {/* Tab 2: Visual ER Diagram */}
+        {/* Tab 2: Dashboard de Indicadores (Vendas, Clientes, Produtos) */}
+        {activeTab === 'indicators' && (
+          <KpiIndicators
+            onOpenQueryInEditor={sql => handleLoadQueryToEditor(sql, true)}
+          />
+        )}
+
+        {/* Tab 3: Gráficos de Análise de Vendas */}
+        {activeTab === 'sales_analytics' && (
+          <SalesAnalytics
+            onOpenQueryInEditor={sql => handleLoadQueryToEditor(sql, true)}
+          />
+        )}
+
+        {/* Tab 4: Visual ER Diagram */}
         {activeTab === 'diagram' && (
           <VisualErDiagram
             tables={tables}
@@ -360,23 +349,23 @@ ORDER BY faturamento_milhoes DESC;`;
           />
         )}
 
-        {/* Tab 3: Interactive Challenges & Course */}
+        {/* Tab 5: Interactive Challenges & Course */}
         {activeTab === 'challenges' && (
           <ChallengesLab
             completedIds={completedChallenges}
             onToggleComplete={handleToggleChallenge}
-            onOpenInMainEditor={handleOpenInMainEditor}
-          />
-        )}
-
-        {/* Tab 4: Data Visualizer (Analytics Charts) */}
-        {activeTab === 'analytics' && (
-          <DataVisualizer
-            result={queryResult}
-            onRunSampleAnalytics={handleRunSampleAnalytics}
+            onOpenInMainEditor={sql => handleLoadQueryToEditor(sql, false)}
           />
         )}
       </div>
+
+      {/* Example Queries Modal */}
+      <ExampleQueriesModal
+        isOpen={isExampleQueriesOpen}
+        onClose={() => setIsExampleQueriesOpen(false)}
+        onLoadQuery={handleLoadQueryToEditor}
+        currentDbId={currentDb.id}
+      />
 
       {/* AI Assistant Modal */}
       <AiAssistantModal
